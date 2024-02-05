@@ -2,54 +2,47 @@ version: '3.8'
 
 services:
 
-  crdb-0:
-    container_name: crdb-0
-    hostname: crdb-0
-    image: cockroachdb/cockroach:latest
-    command: start --cluster-name=example-ycsb --logtostderr=WARNING --log-file-verbosity=WARNING --insecure --join=crdb-0
-
-  crdb-1:
-    container_name: crdb-1
-    hostname: crdb-1
-    image: cockroachdb/cockroach:latest
-    command: start --cluster-name=example-ycsb --logtostderr=WARNING --log-file-verbosity=WARNING --insecure --join=crdb-0
-    depends_on:
-      - crdb-0
-
-  crdb-2:
-    container_name: crdb-2
-    hostname: crdb-2
-    image: cockroachdb/cockroach:latest
-    command: start --cluster-name=example-ycsb --logtostderr=WARNING --log-file-verbosity=WARNING --insecure --join=crdb-0
-    depends_on:
-      - crdb-0
-
-  lb:
-    container_name: lb
-    hostname: lb
-    image: timveil/dynamic-haproxy:latest
+  mongodb-0:
+    container_name: mongodb-0
+    hostname: mongodb-0
+    image: mongo:4.4
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
     ports:
-      - "26257:26257"
-      - "8080:8080"
-      - "8081:8081"
-    environment:
-      - NODES=crdb-0 crdb-1 crdb-2
-    depends_on:
-      - crdb-0
-      - crdb-1
-      - crdb-2
+      - "37017:27017"
+    volumes:
+      - /data/mongo/data/mongo0:/data/db
+    command: mongod --replSet rs0
 
-  crdb-init:
-    container_name: crdb-init
-    hostname: crdb-init
-    image: timveil/cockroachdb-remote-client:latest
+  mongodb-1:
+    container_name: mongodb-1
+    hostname: mongodb-1
+    image: mongo:4.4
+    user: root
     environment:
-      - COCKROACH_HOST=crdb-0:26257
-      - COCKROACH_INSECURE=true
-      - COCKROACH_INIT=true
-      - DATABASE_NAME=ycsb
-    depends_on:
-      - lb
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+    ports:
+      - "37018:27017"
+    volumes:
+      - /data/mongo/data/mongo1:/data/db
+    command: mongod --replSet rs0
+
+  mongodb-2:
+    container_name: mongodb-2
+    hostname: mongodb-2
+    image: mongo:4.4
+    user: root
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+    ports:
+      - "37019:27017"
+    volumes:
+      - /data/mongo/data/mongo2:/data/db
+    command: mongod --replSet rs0
 
   ycsb:
     container_name: ycsb
@@ -57,9 +50,7 @@ services:
     build:
       context: ycsb
       args:
-        - POSTGRESQL_JDBC_VERSION=42.2.13
         - GIT_BRANCH=master
     environment:
-      - WORKLOAD_NAME=workload-b-cockroach
-      - WORKLOAD_TARGET_OPS=100
+      - WORKLOAD_NAME=read_mod_wrt
       - WORKLOAD_RECORD_COUNT=20000
